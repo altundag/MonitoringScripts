@@ -1,17 +1,34 @@
+# aaltunda - ali.mehmet.altundag@cern.ch
+
 import url, re
 try: import xml.etree.ElementTree as ET
 except ImportError: from elementtree import ElementTree as ET
 
-t1Pattern = r'^(T1)_([^_]*?)_([^_]*?)$'
-t2Pattern = r'^(T2)_([^_]*?)_([^_]*?)$'
-t3Pattern = r'^(T3)_([^_]*?)_([^_]*?)$'
+# general cms site name pattern. notice the last section,
+# '_' is not excluded because we have sites named: T2_RU_RRC_KI,
+# T2_UK_London_Brunel, T2_PT_NCG_Lisbon...
+cmsSiteName       = re.compile(r'^(T[0,1,2,3])_([^_]{2})_(.*)$')
 
-def parseSiteName(pattern, site):
-    match = re.match(pattern, site)
+t1CompiledPattern = re.compile(r'^(T1)_([^_]{2})_(.*)$')
+t2CompiledPattern = re.compile(r'^(T2)_([^_]{2})_(.*)$')
+t3compiledPattern = re.compile(r'^(T3)_([^_]{2})_(.*)$')
+
+def isValidCMSSiteName(site):
+    """return True if it is cms site name"""
+    match = cmsSiteName.match(site)
+    if match: return True
+    return False
+
+def parseSiteName(site, compiledPattern = cmsSiteName):
+    """parse cms site name and return its sub-sections"""
+    match = compiledPattern.match(site)
     if match: return match.groups()
     return False
 
 def getTier(site):
+    """return tier number of given cms site name"""
+    # check if not cms site name
+    if not isValidCMSSiteName(site): return None
     try:
         return int(site[1:2])
     except ValueError:
@@ -33,11 +50,17 @@ def getSites():
         if not siteName: 
             continue
         services = site.findall('service')
-        ret[siteName] = []
+        ret[siteName] = {}
+        ret[siteName]['hosts'] = []
+        ret[siteName]['name']  = site.attrib['name']
         for service in services:
             serviceName = service.attrib['hostname']
-            ret[siteName].append(serviceName)
+            ret[siteName]['hosts'].append(serviceName)
     return ret
 
 if __name__ == '__main__':
-    print getSites()
+    siteList = getSites()
+    for i in siteList:
+       print 'isValidCMSSiteName:', i, isValidCMSSiteName(i)
+       print 'parseSiteName     :', parseSiteName(i)
+       print 'getTier           :', getTier(i)
